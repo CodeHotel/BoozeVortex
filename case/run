@@ -16,7 +16,7 @@ if ! command -v foamRun >/dev/null 2>&1; then
     echo "Continuing anyway..."
 fi
 
-# --- NEW: mesh pre-orientation from initialOrientation.dat (once) ---
+# --- mesh pre-orientation from initialOrientation.dat (once) ---
 if [ -f "constant/initialOrientation.dat" ] && [ ! -f ".mesh_oriented" ]; then
     echo ">>> Found constant/initialOrientation.dat, applying initial mesh rotation"
 
@@ -28,20 +28,10 @@ if [ -f "constant/initialOrientation.dat" ] && [ ! -f ".mesh_oriented" ]; then
     echo ">>> Initial FOAM orientation: rotX=${RX} deg, rotY=${RY} deg, rotZ=${RZ} deg"
     echo ">>> Rotation centre (CoG): (${CX}, ${CY}, ${CZ})"
 
-    # Move CoG to origin
-    echo ">>> transformPoints: translate -CoG"
-    transformPoints -translate "(-${CX} -${CY} -${CZ})"
+    TF_CMD="translate=(-${CX} -${CY} -${CZ}), Rx=${RX}, Ry=${RY}, translate=(${CX} ${CY} ${CZ})"
 
-    # Rotate about X then Y (global axes)
-    echo ">>> transformPoints: rotate about X by ${RX} deg"
-    transformPoints -rotate "(1 0 0)" "${RX}"
-
-    echo ">>> transformPoints: rotate about Y by ${RY} deg"
-    transformPoints -rotate "(0 1 0)" "${RY}"
-
-    # Move CoG back
-    echo ">>> transformPoints: translate +CoG"
-    transformPoints -translate "(${CX} ${CY} ${CZ})"
+    echo ">>> transformPoints \"${TF_CMD}\""
+    transformPoints "${TF_CMD}"
 
     touch .mesh_oriented
     echo ">>> Mesh orientation applied and .mesh_oriented marker created"
