@@ -16,6 +16,37 @@ if ! command -v foamRun >/dev/null 2>&1; then
     echo "Continuing anyway..."
 fi
 
+# --- NEW: mesh pre-orientation from initialOrientation.dat (once) ---
+if [ -f "constant/initialOrientation.dat" ] && [ ! -f ".mesh_oriented" ]; then
+    echo ">>> Found constant/initialOrientation.dat, applying initial mesh rotation"
+
+    # First non-comment line: Rx Ry Rz
+    read RX RY RZ < <(grep -v '^//' constant/initialOrientation.dat | sed -n '1p')
+    # Second non-comment line: CoGx CoGy CoGz
+    read CX CY CZ < <(grep -v '^//' constant/initialOrientation.dat | sed -n '2p')
+
+    echo ">>> Initial FOAM orientation: rotX=${RX} deg, rotY=${RY} deg, rotZ=${RZ} deg"
+    echo ">>> Rotation centre (CoG): (${CX}, ${CY}, ${CZ})"
+
+    # Move CoG to origin
+    echo ">>> transformPoints: translate -CoG"
+    transformPoints -translate "(-${CX} -${CY} -${CZ})"
+
+    # Rotate about X then Y (global axes)
+    echo ">>> transformPoints: rotate about X by ${RX} deg"
+    transformPoints -rotate "(1 0 0)" "${RX}"
+
+    echo ">>> transformPoints: rotate about Y by ${RY} deg"
+    transformPoints -rotate "(0 1 0)" "${RY}"
+
+    # Move CoG back
+    echo ">>> transformPoints: translate +CoG"
+    transformPoints -translate "(${CX} ${CY} ${CZ})"
+
+    touch .mesh_oriented
+    echo ">>> Mesh orientation applied and .mesh_oriented marker created"
+fi
+
 echo ">>> setFields"
 setFields
 
@@ -24,3 +55,4 @@ decomposePar -force
 
 echo ">>> mpirun -np ${NP} foamRun -parallel | tee log.foamRun"
 mpirun -np "${NP}" foamRun -parallel | tee log.foamRun
+

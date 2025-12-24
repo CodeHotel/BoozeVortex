@@ -127,12 +127,40 @@ def write_translation_dat(
         f.write(")\n")
 
 
+def write_initial_orientation(
+    out_path: str,
+    rx0: float,
+    ry0: float,
+    origin: Tuple[float, float, float],
+) -> None:
+    """
+    Write initialOrientation.dat with:
+
+      line 1: rotX rotY rotZ (deg)  - ABSOLUTE FOAM angles at t=0
+      line 2: CoGx CoGy CoGz (m)   - rotation center to use for pre-rotation
+
+    The run script will:
+      - translate by -CoG
+      - rotate by rotX, rotY
+      - translate back by +CoG
+    """
+    ox, oy, oz = origin
+    with open(out_path, "w") as f:
+        f.write("// Initial absolute orientation in FOAM angles (deg)\n")
+        f.write("// rotX rotY rotZ\n")
+        f.write(f"{rx0:.6f} {ry0:.6f} 0.000000\n")
+        f.write("// Rotation centre (CoG) in meters\n")
+        f.write("// CoGx CoGy CoGz\n")
+        f.write(f"{ox:.6f} {oy:.6f} {oz:.6f}\n")
+
+
 def main(argv: List[str] = None) -> None:
     parser = argparse.ArgumentParser(
         description=(
             "Generate OpenFOAM rotation.dat and translation.dat from "
             "keyframe angles given in your notation, using shortest-path "
-            "cubic splines for smooth human-like motion."
+            "cubic splines for smooth human-like motion, and emitting an "
+            "initialOrientation.dat for pre-rotating the mesh about CoG."
         )
     )
 
@@ -154,8 +182,9 @@ def main(argv: List[str] = None) -> None:
         type=str,
         required=True,
         help=(
-            "Origin / CofG for the motion (for reference), in meters, "
-            "same coordinates as OpenFOAM. Example: --origin '(0,0,0.10)'"
+            "Origin / CofG for the motion, in meters, "
+            "same coordinates as OpenFOAM (must match dynamicMeshDict). "
+            "Example: --origin '(0,0,0.10)'"
         ),
     )
 
@@ -163,7 +192,7 @@ def main(argv: List[str] = None) -> None:
         "--output_dir",
         type=str,
         required=True,
-        help="Directory where rotation.dat and translation.dat will be written.",
+        help="Directory where rotation.dat, translation.dat, initialOrientation.dat will be written.",
     )
 
     parser.add_argument(
@@ -201,23 +230,41 @@ def main(argv: List[str] = None) -> None:
     tt, Hx_interp = build_angle_interp(t_arr, Hx_arr, args.n_points)
     _,  Hy_interp = build_angle_interp(t_arr, Hy_arr, args.n_points)
 
-    # 2) Convert your notation -> FOAM rotation angles
+    # 2) Convert your notation -> FOAM ABSOLUTE rotation angles
     #    Default upright model: H_x = 90° when rotX = 0°
-    #    => rotX = H_x - 90°
-    Rx_interp = Hx_interp - 90.0
-    Ry_interp = Hy_interp  # no special offset on y in your setup
+    #    => rotX_abs = H_x - 90°
+    Rx_abs = Hx_interp - 90.0
+    Ry_abs = Hy_interp
+
+    # 3) Extract initial ABSOLUTE orientation and make motion RELATIVE
+    Rx0 = float(Rx_abs[0])
+    Ry0 = float(Ry_abs[0])
+
+    Rx_rel = Rx_abs - Rx0
+    Ry_rel = Ry_abs - Ry0
 
     # Ensure output directory exists
     os.makedirs(args.output_dir, exist_ok=True)
 
     rot_path   = os.path.join(args.output_dir, "rotation.dat")
     trans_path = os.path.join(args.output_dir, "translation.dat")
+    init_path  = os.path.join(args.output_dir, "initialOrientation.dat")
 
-    write_rotation_dat(rot_path, tt, Rx_interp, Ry_interp, origin)
+    write_rotation_dat(rot_path, tt, Rx_rel, Ry_rel, origin)
     write_translation_dat(trans_path, tt, origin)
+    write_initial_orientation(init_path, Rx0, Ry0, origin)
 
-    print(f"Wrote rotation.dat to    {rot_path}")
-    print(f"Wrote translation.dat to {trans_path}")
+    print(f"Wrote rotation.dat to          {rot_path}")
+    print(f"Wrote translation.dat to       {trans_path}")
+    print(f"Wrote initialOrientation.dat to {init_path}")
+    print(
+        f"Initial ABSOLUTE FOAM orientation (deg): "
+        f"rotX0={Rx0:.3f}, rotY0={Ry0:.3f}, rotZ0=0.000"
+    )
+    print(
+        f"Rotation centre (CoG) used: "
+        f"({origin[0]:.3f}, {origin[1]:.3f}, {origin[2]:.3f})"
+    )
 
 
 if __name__ == "__main__":
