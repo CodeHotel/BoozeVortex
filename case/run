@@ -1,4 +1,3 @@
-cat > run <<'EOF'
 #!/bin/bash
 set -euo pipefail
 
@@ -90,7 +89,4 @@ echo ">>> E_water(t=${T_POST}) = ${Ewater}"
 } > E_water.txt
 
 echo ">>> Wrote E_water.txt"
-EOF
-
-chmod +x run
 

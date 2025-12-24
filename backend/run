@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# run — start the BO WebUI + controller
+# Usage:
+#   ./run
+#   PORT=8080 ./run
+#   HOST=0.0.0.0 PORT=8000 ./run
+
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$HERE"
+
+HOST="${HOST:-127.0.0.1}"
+PORT="${PORT:-8000}"
+
+# Activate repo-local venv if present
+if [[ -f "$HERE/venv/bin/activate" ]]; then
+  # shellcheck disable=SC1091
+  source "$HERE/venv/bin/activate"
+fi
+
+python -c "import fastapi, uvicorn, jinja2, numpy, pandas, sklearn, paramiko" >/dev/null 2>&1 || {
+  echo "Missing dependencies in current venv."
+  echo "Install with:"
+  echo "  pip install fastapi uvicorn jinja2 numpy pandas scikit-learn paramiko"
+  exit 1
+}
+
+echo "Starting WebUI on http://${HOST}:${PORT}"
+echo "Controls: Start/Resume, Pause, Force Stop."
+echo
+
+exec uvicorn webapp:app --host "$HOST" --port "$PORT"
+
