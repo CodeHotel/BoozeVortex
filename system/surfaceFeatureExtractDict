@@ -1,0 +1,9 @@
+bottle.stl
+{
+    extractionMethod extractFromSurface;
+    extractFromSurfaceCoeffs
+    {
+        includedAngle 150;
+    }
+    writeObj yes;
+}

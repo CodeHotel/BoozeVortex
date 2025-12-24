@@ -1,0 +1,31 @@
+#!/bin/bash
+set -e
+
+echo ">>> Rendering VTK for case in: $(pwd)"
+
+# Optional: warn if OpenFOAM env might not be loaded
+if ! command -v foamToVTK >/dev/null 2>&1; then
+    echo "WARNING: foamToVTK not found in PATH."
+    echo "Make sure you have sourced your OpenFOAM bashrc, e.g.:"
+    echo "  source /opt/openfoam*/etc/bashrc"
+    echo
+    echo "Continuing anyway..."
+fi
+
+# Reconstruct from processor directories if present
+if ls processor* >/dev/null 2>&1; then
+    echo ">>> Found processor* directories, running reconstructPar"
+    reconstructPar
+else
+    echo ">>> No processor* directories found, assuming already reconstructed."
+fi
+
+# Clean old VTK output
+echo ">>> Removing old VTK directory (if any)"
+rm -rf VTK 2>/dev/null || true
+
+# Export all times in legacy VTK format
+echo ">>> Running foamToVTK for all times"
+foamToVTK
+
+echo ">>> Render complete. Check the VTK/ directory."

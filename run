@@ -1,0 +1,26 @@
+#!/bin/bash
+set -e
+
+# Number of processors (default 8, or first argument)
+NP="${1:-8}"
+
+echo ">>> Running OpenFOAM case in: $(pwd)"
+echo ">>> Using NP = ${NP} processors"
+
+# Optional: warn if OpenFOAM env might not be loaded
+if ! command -v foamRun >/dev/null 2>&1; then
+    echo "WARNING: foamRun not found in PATH."
+    echo "Make sure you have sourced your OpenFOAM bashrc, e.g.:"
+    echo "  source /opt/openfoam*/etc/bashrc"
+    echo
+    echo "Continuing anyway..."
+fi
+
+echo ">>> setFields"
+setFields
+
+echo ">>> decomposePar -force"
+decomposePar -force
+
+echo ">>> mpirun -np ${NP} foamRun -parallel | tee log.foamRun"
+mpirun -np "${NP}" foamRun -parallel | tee log.foamRun

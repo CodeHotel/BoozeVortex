@@ -1,0 +1,47 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      controlDict;
+}
+
+// Classic solver (NOT foamRun modular solver)
+application     foamRun;
+solver          incompressibleVoF;
+
+// Time control
+startFrom       startTime;
+startTime       0;
+
+stopAt          endTime;
+endTime         2;                  // 2 s of sloshing
+
+deltaT          0.001;
+
+writeControl    adjustableRunTime;
+writeInterval   0.005;
+
+purgeWrite      0;
+
+writeFormat     ascii;
+writePrecision  6;
+writeCompression off;
+
+timeFormat      general;
+timePrecision   6;
+
+runTimeModifiable yes;
+
+// Adaptive time step
+adjustTimeStep  yes;
+maxCo           0.5;
+maxAlphaCo      0.5;
+maxDeltaT       1;
+
+// (Optional) debug switches
+DebugSwitches
+{
+    MULES       1;
+}
+

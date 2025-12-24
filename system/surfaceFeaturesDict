@@ -1,0 +1,17 @@
+FoamFile
+{
+    format      ascii;
+    class       dictionary;
+    object      surfaceFeaturesDict;
+}
+
+surfaces ("bottle.stl");
+
+// Identify a feature when angle between faces < includedAngle
+includedAngle 150;
+
+subsetFeatures
+{
+    nonManifoldEdges no;
+    openEdges yes;
+}

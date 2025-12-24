@@ -1,0 +1,65 @@
+/*--------------------------------*- C++ -*----------------------------------*\
+  =========                 |
+  \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox
+   \\    /   O peration     | Website:  https://openfoam.org
+    \\  /    A nd           | Version:  13
+     \\/     M anipulation  |
+\*---------------------------------------------------------------------------*/
+
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "constant";
+    object      dynamicMeshDict;
+}
+
+// Use fvMeshMover + solidBody motion driven by time tables
+
+mover
+{
+    // Use the motionSolver-based fvMeshMover
+    type            motionSolver;
+
+    // Only the motion solvers library is needed here
+    libs            ("libfvMotionSolvers.so");
+
+    // Within the mover, use a solid-body motion solver
+    motionSolver    solidBody;
+
+    // Apply motion to the whole mesh (deprecated but still works)
+    select          all;
+
+    // Solid body motion: 6-DOF prescribed from tables
+    solidBodyMotionFunction sixDoFMotion;
+
+    sixDoFMotionCoeffs
+    {
+        // Centre of gravity / rotation centre (adapt if needed)
+        CofG        (0 0 0.10);
+
+        // --- prescribed TRANSLATION ---
+        // time -> (x y z) [m]
+        translation table;
+        translationCoeffs
+        {
+            // expects "n ( (t (x y z)) ... )"
+            values
+            #include "$FOAM_CASE/constant/translation.dat";
+        }
+
+        // --- prescribed ROTATION ---
+        // time -> (rotX rotY rotZ) [deg]  (your rotation.dat already in this form)
+        rotation    table;
+        rotationCoeffs
+        {
+            // expects "n ( (t (rx ry rz)) ... )"
+            values
+            #include "$FOAM_CASE/constant/rotation.dat";
+        }
+    }
+}
+
+// ************************************************************************* //
+

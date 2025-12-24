@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# --- 1) Print tree at start ---
+# If you want a shorter tree, change to: tree -L 2
+tree
+
+echo
+
+is_text_file() {
+  local f="$1"
+  # "charset=binary" => treat as non-text
+  local mime
+  mime="$(file -b --mime "$f" 2>/dev/null || true)"
+  [[ "$mime" != *"charset=binary"* ]]
+}
+
+print_direct_children_and_contents() {
+  local dir="$1"
+  echo "===================="
+  echo "DIRECT CHILDREN OF: $dir"
+  echo "===================="
+
+  # List direct children only (not recursive), safe for spaces.
+  find "$dir" -mindepth 1 -maxdepth 1 -print0 | while IFS= read -r -d '' p; do
+    local name
+    name="$(basename "$p")"
+
+    if [[ -d "$p" ]]; then
+      printf '[%s] %s (dir)\n' "$name" "$p"
+      echo
+      continue
+    fi
+
+    if [[ -f "$p" ]]; then
+      printf '[%s] %s (file)\n' "$name" "$p"
+
+      # Print contents (guard binary files)
+      if is_text_file "$p"; then
+        echo "----- BEGIN CONTENTS: $p -----"
+        cat -- "$p"
+        echo
+        echo "----- END CONTENTS: $p -----"
+      else
+        echo "----- CONTENTS SKIPPED (binary/non-text): $p -----"
+      fi
+
+      echo
+      continue
+    fi
+
+    # For symlinks/special files
+    printf '[%s] %s (special)\n\n' "$name" "$p"
+  done
+}
+
+# --- 2) Print direct children + contents for requested dirs ---
+print_direct_children_and_contents "."
+print_direct_children_and_contents "./constant"
+print_direct_children_and_contents "./system"
+

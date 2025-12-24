@@ -1,0 +1,41 @@
+#!/bin/bash
+set -e
+
+echo ">>> Resetting OpenFOAM case in: $(pwd)"
+
+# Basic sanity check
+if [ ! -d "system" ] || [ ! -d "constant" ]; then
+    echo "ERROR: This does not look like an OpenFOAM case (missing system/ or constant/)."
+    exit 1
+fi
+
+# Remove time directories except 0
+echo ">>> Removing time directories except 0/"
+for d in [0-9]*; do
+    [ "$d" = "0" ] && continue   # keep 0
+    [ -d "$d" ] || continue      # skip if not a directory
+    echo "    rm -rf $d"
+    rm -rf "$d"
+done
+
+# Remove processor directories
+echo ">>> Removing processor directories"
+for d in processor*; do
+    [ -d "$d" ] || continue
+    echo "    rm -rf $d"
+    rm -rf "$d"
+done
+
+# Remove VTK and any VTK-ex dirs
+echo ">>> Removing VTK exports"
+rm -rf VTK VTK-ex 2>/dev/null || true
+
+# Remove logs
+echo ">>> Removing logs"
+rm -f log.foamRun log.* 2>/dev/null || true
+
+# Remove auxiliary bottle meshes
+echo ">>> Removing bottle obj helper files"
+rm -f bottle_*.obj bottle_split_*.obj bottle_oriented_*.obj 2>/dev/null || true
+
+echo ">>> Reset complete."

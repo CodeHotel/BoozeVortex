@@ -1,0 +1,33 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    location    "system";
+    object      decomposeParDict;
+}
+
+// We will run on 8 MPI ranks
+numberOfSubdomains 8;
+
+// Simple geometric decomposition of the box domain
+method          simple;
+
+simpleCoeffs
+{
+    // 2 x 2 x 2 = 8 subdomains
+    n               (2 2 2);
+    delta           0.001;
+}
+
+hierarchicalCoeffs
+{
+    n               (1 1 1);
+    delta           0.001;
+    order           xyz;
+}
+
+distributed     no;
+
+roots           ();
+
