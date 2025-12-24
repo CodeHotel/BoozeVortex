@@ -1,0 +1,70 @@
+FoamFile
+{
+    version     2.0;
+    format      ascii;
+    class       dictionary;
+    object      functions;
+}
+
+// Computes E_water(t) = (∫ (enstrophy * alpha.water) dV) / (∫ alpha.water dV)
+
+// 1) enstrophy field from U (writes "enstrophy")
+ens
+{
+    type            enstrophy;
+    libs            ("libfieldFunctionObjects.so");
+    field           U;
+
+    executeControl  timeStep;
+    writeControl    writeTime;
+}
+
+// 2) numE = enstrophy * alpha.water (writes "numE")
+numE
+{
+    type            multiply;
+    libs            ("libfieldFunctionObjects.so");
+    fields          (enstrophy alpha.water);
+    result          numE;
+
+    executeControl  timeStep;
+    writeControl    writeTime;
+}
+
+// 3) intNum = ∫ numE dV
+intNum
+{
+    type            volFieldValue;
+    libs            ("libfieldFunctionObjects.so");
+
+    cellZone        all;
+    operation       volIntegrate;
+
+    writeFields     false;
+    fields          (numE);
+
+    log             true;
+    writeToFile     true;
+
+    executeControl  timeStep;
+    writeControl    writeTime;
+}
+
+// 4) intDen = ∫ alpha.water dV
+intDen
+{
+    type            volFieldValue;
+    libs            ("libfieldFunctionObjects.so");
+
+    cellZone        all;
+    operation       volIntegrate;
+
+    writeFields     false;
+    fields          (alpha.water);
+
+    log             true;
+    writeToFile     true;
+
+    executeControl  timeStep;
+    writeControl    writeTime;
+}

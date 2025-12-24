@@ -1,11 +1,15 @@
+cat > run <<'EOF'
 #!/bin/bash
-set -e
+set -euo pipefail
 
 # Number of processors (default 8, or first argument)
 NP="${1:-8}"
+# Post-processing time (default 2, or second argument)
+T_POST="${2:-2}"
 
 echo ">>> Running OpenFOAM case in: $(pwd)"
 echo ">>> Using NP = ${NP} processors"
+echo ">>> Post-process time = ${T_POST} s"
 
 # Optional: warn if OpenFOAM env might not be loaded
 if ! command -v foamRun >/dev/null 2>&1; then
@@ -45,4 +49,48 @@ decomposePar -force
 
 echo ">>> mpirun -np ${NP} foamRun -parallel | tee log.foamRun"
 mpirun -np "${NP}" foamRun -parallel | tee log.foamRun
+
+# -----------------------------------------------------------------------------
+# Post-processing: compute E_water(t) = (∫ numE dV) / (∫ alpha.water dV)
+# Requires: system/functions set up with ens, numE, intNum, intDen and writeToFile true
+# -----------------------------------------------------------------------------
+echo ">>> Post-processing at t=${T_POST}s: foamPostProcess (parallel) | tee log.postProcess"
+mpirun -np "${NP}" foamPostProcess -parallel -time "${T_POST}" | tee "log.postProcess_t${T_POST}"
+
+# Files written by volFieldValue (your current setup writes to postProcessing/intNum/... etc.)
+INTNUM="postProcessing/intNum/${T_POST}/volFieldValue.dat"
+INTDEN="postProcessing/intDen/${T_POST}/volFieldValue.dat"
+
+if [ ! -f "${INTNUM}" ] || [ ! -f "${INTDEN}" ]; then
+    echo "ERROR: Expected postProcessing files not found:"
+    echo "  ${INTNUM}"
+    echo "  ${INTDEN}"
+    echo "Check system/functions (writeToFile true) and the postProcess log."
+    exit 1
+fi
+
+numv=$(awk 'END{print $2}' "${INTNUM}")
+denv=$(awk 'END{print $2}' "${INTDEN}")
+
+Ewater=$(python3 - <<PY
+num=float("$numv"); den=float("$denv")
+print(num/den)
+PY
+)
+
+echo ">>> intNum = ${numv}"
+echo ">>> intDen = ${denv}"
+echo ">>> E_water(t=${T_POST}) = ${Ewater}"
+
+# Save to file
+{
+  echo "# E_water(t) = (∫ (enstrophy*alpha.water) dV) / (∫ alpha.water dV)"
+  echo "# time  intNum  intDen  E_water"
+  printf "%s  %.10e  %.10e  %.10e\n" "${T_POST}" "${numv}" "${denv}" "${Ewater}"
+} > E_water.txt
+
+echo ">>> Wrote E_water.txt"
+EOF
+
+chmod +x run
 
